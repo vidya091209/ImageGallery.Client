@@ -8,7 +8,7 @@ User with Full Access
 L: Claire
 P: password
 
-User with Full Access 
+User with Read Access 
 L: Frank
 P: password
 
