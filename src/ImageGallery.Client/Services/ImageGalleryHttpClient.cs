@@ -24,29 +24,6 @@ namespace ImageGallery.Client.Services
             _httpContextAccessor = httpContextAccessor;
         }
 
-
-        //public async Task<HttpClient> GetClient()
-        //{
-        //    string accessToken = string.Empty;
-
-        //    var currentContext = _httpContextAccessor.HttpContext;
-
-        //    accessToken = await currentContext.Authentication.GetTokenAsync(
-        //        OpenIdConnectParameterNames.AccessToken);
-
-        //    if (!string.IsNullOrWhiteSpace(accessToken))
-        //    {
-        //        _httpClient.SetBearerToken(accessToken);
-        //    }
-
-        //    _httpClient.BaseAddress = new Uri(ApiUrl);
-        //    _httpClient.DefaultRequestHeaders.Accept.Clear();
-        //    _httpClient.DefaultRequestHeaders.Accept.Add(
-        //        new MediaTypeWithQualityHeaderValue("application/json"));
-
-        //    return _httpClient;
-        //}
-
         public async Task<HttpClient> GetClient()
         {
             string accessToken = string.Empty;
@@ -71,9 +48,9 @@ namespace ImageGallery.Client.Services
             else
             {
                 // get access token
-                accessToken = await currentContext.Authentication
-                    .GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
+                accessToken = await currentContext.Authentication.GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
             }
+
 
             if (!string.IsNullOrWhiteSpace(accessToken))
             {

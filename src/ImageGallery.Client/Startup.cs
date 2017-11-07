@@ -12,6 +12,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using ImageGallery.Client.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
 using Swashbuckle.AspNetCore.Swagger;
@@ -50,9 +52,6 @@ namespace ImageGallery.Client
 
             var config = Configuration.Get<ConfigurationOptions>();
 
-            //config.OpenIdConnectConfiguration.ClientId = "";
-
-
             Console.WriteLine($"Dataprotection Enabled: {config.Dataprotection.Enabled}");
             Console.WriteLine($"DataprotectionRedis: {config.Dataprotection.RedisConnection}");
             Console.WriteLine($"RedisKey: {config.Dataprotection.RedisKey}");
@@ -73,6 +72,31 @@ namespace ImageGallery.Client
                 });
             });
 
+            services.AddAuthentication(
+                    o =>
+                    {
+                        o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                        o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                    })
+                .AddCookie("Cookies")
+                .AddOpenIdConnect("oidc", options =>
+                {
+                    options.Authority = config.OpenIdConnectConfiguration.Authority; 
+                    options.RequireHttpsMetadata = true;
+                    options.ClientId = config.OpenIdConnectConfiguration.ClientId;
+
+                    options.Scope.Clear();
+                    options.Scope.Add("openid");
+                    options.Scope.Add("profile");
+
+                    options.ResponseType = "code id_token";
+                    // CallbackPath = new PathString("...")
+                    options.SignInScheme = "Cookies";
+                    options.SaveTokens = true;
+                    options.ClientSecret = config.OpenIdConnectConfiguration.ClientSecret;
+                    options.GetClaimsFromUserInfoEndpoint = true;
+                });
+
             services.AddAuthorization(authorizationOptions =>
             {
                 authorizationOptions.AddPolicy(
@@ -85,6 +109,9 @@ namespace ImageGallery.Client
                         //policyBuilder.RequireRole("role", "PayingUser");
                     });
             });
+
+            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie();
 
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddScoped<IImageGalleryHttpClient, ImageGalleryHttpClient>();
@@ -116,62 +143,67 @@ namespace ImageGallery.Client
 
             app.UseForwardedHeaders(forwardOptions);
 
-            app.UseCookieAuthentication(new CookieAuthenticationOptions
-            {
-                AuthenticationScheme = "Cookies",
-                AccessDeniedPath = "/Authorization/AccessDenied"
-            });
+            #region Moved to Configure Services 
+
+            //app.UseCookieAuthentication(new CookieAuthenticationOptions
+            //{
+            //    AuthenticationScheme = "Cookies",
+            //    AccessDeniedPath = "/Authorization/AccessDenied"
+            //});
+
+            #endregion 
+
 
             JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
             var config = Configuration.Get<ConfigurationOptions>();
             Console.WriteLine("Authority" + config.OpenIdConnectConfiguration.Authority);
 
-            app.UseOpenIdConnectAuthentication(new OpenIdConnectOptions
-            {
-                RequireHttpsMetadata = false,
+            //app.UseOpenIdConnectAuthentication(new OpenIdConnectOptions
+            //{
+            //    RequireHttpsMetadata = false,
 
-                AuthenticationScheme = "oidc",
-                Authority = config.OpenIdConnectConfiguration.Authority, 
-                ClientId = config.OpenIdConnectConfiguration.ClientId,
-                Scope = { "openid", "profile", "address", "roles", "imagegalleryapi", "subscriptionlevel", "country", "offline_access" },
-                ResponseType = "code id_token",
-                // CallbackPath = new PathString("...")
-                //SignedOutCallbackPath = new PathString("")
-                SignInScheme = "Cookies",
-                SaveTokens = true,
-                ClientSecret = config.OpenIdConnectConfiguration.ClientSecret,
-                GetClaimsFromUserInfoEndpoint = true,
-                Events = new OpenIdConnectEvents()
-                {
-                    OnTokenValidated = tokenValidatedContext =>
-                    {
-                        var identity = tokenValidatedContext.Ticket.Principal.Identity
-                            as ClaimsIdentity;
+            //    AuthenticationScheme = "oidc",
+            //    Authority = config.OpenIdConnectConfiguration.Authority, 
+            //    ClientId = config.OpenIdConnectConfiguration.ClientId,
+            //    Scope = { "openid", "profile", "address", "roles", "imagegalleryapi", "subscriptionlevel", "country", "offline_access" },
+            //    ResponseType = "code id_token",
+            //    // CallbackPath = new PathString("...")
+            //    //SignedOutCallbackPath = new PathString("")
+            //    SignInScheme = "Cookies",
+            //    SaveTokens = true,
+            //    ClientSecret = config.OpenIdConnectConfiguration.ClientSecret,
+            //    GetClaimsFromUserInfoEndpoint = true,
+            //    Events = new OpenIdConnectEvents()
+            //    {
+            //        OnTokenValidated = tokenValidatedContext =>
+            //        {
+            //            var identity = tokenValidatedContext.Ticket.Principal.Identity
+            //                as ClaimsIdentity;
 
-                        var subjectClaim = identity.Claims.FirstOrDefault(z => z.Type == "sub");
+            //            var subjectClaim = identity.Claims.FirstOrDefault(z => z.Type == "sub");
 
-                        var newClaimsIdentity = new ClaimsIdentity(
-                            tokenValidatedContext.Ticket.AuthenticationScheme,
-                            "given_name",
-                            "role");
+            //            var newClaimsIdentity = new ClaimsIdentity(
+            //                tokenValidatedContext.Ticket.AuthenticationScheme,
+            //                "given_name",
+            //                "role");
 
-                        newClaimsIdentity.AddClaim(subjectClaim);
+            //            newClaimsIdentity.AddClaim(subjectClaim);
 
-                        tokenValidatedContext.Ticket = new AuthenticationTicket(
-                            new ClaimsPrincipal(newClaimsIdentity),
-                            tokenValidatedContext.Ticket.Properties,
-                            tokenValidatedContext.Ticket.AuthenticationScheme);
+            //            tokenValidatedContext.Ticket = new AuthenticationTicket(
+            //                new ClaimsPrincipal(newClaimsIdentity),
+            //                tokenValidatedContext.Ticket.Properties,
+            //                tokenValidatedContext.Ticket.AuthenticationScheme);
 
-                        return Task.FromResult(0);
-                    },
-                    OnUserInformationReceived = userInformationReceivedContext =>
-                    {
-                        userInformationReceivedContext.User.Remove("address");
-                        return Task.FromResult(0);
-                    }
-                }
-            });
+            //            return Task.FromResult(0);
+            //        },
+            //        OnUserInformationReceived = userInformationReceivedContext =>
+            //        {
+            //            userInformationReceivedContext.User.Remove("address");
+            //            return Task.FromResult(0);
+            //        }
+            //    }
+            //});
 
             app.UseStaticFiles();
 
