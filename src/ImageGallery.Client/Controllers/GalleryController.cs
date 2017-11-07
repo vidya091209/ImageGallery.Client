@@ -222,16 +222,16 @@ namespace ImageGallery.Client.Controllers
             // create a TokenRevocationClient
             var revocationClient = new TokenRevocationClient(metaDataResponse.RevocationEndpoint, ApplicationSettings.OpenIdConnectConfiguration.ClientId, ApplicationSettings.OpenIdConnectConfiguration.ClientSecret);
 
-           
+
 
             var x = revocationClient.ClientId;
             var x1 = revocationClient.ClientSecret;
             var x2 = revocationClient.AuthenticationStyle;
 
-            Console.WriteLine("ClientId:" + x + "ClientSecret:" + x1 + "AuthenticationStyle:"  + x2);
+            Console.WriteLine("ClientId:" + x + "ClientSecret:" + x1 + "AuthenticationStyle:" + x2);
 
             // get the access token to revoke 
-            var accessToken = await HttpContext.Authentication.GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
+            var accessToken = await HttpContext.GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
 
             if (!string.IsNullOrWhiteSpace(accessToken))
             {
@@ -248,8 +248,7 @@ namespace ImageGallery.Client.Controllers
             }
 
             // revoke the refresh token as well
-            var refreshToken = await HttpContext.Authentication
-                .GetTokenAsync(OpenIdConnectParameterNames.RefreshToken);
+            var refreshToken = await HttpContext.GetTokenAsync(OpenIdConnectParameterNames.RefreshToken);
 
             if (!string.IsNullOrWhiteSpace(refreshToken))
             {
@@ -265,8 +264,8 @@ namespace ImageGallery.Client.Controllers
 
             #endregion
 
-            await HttpContext.Authentication.SignOutAsync("Cookies");
-            await HttpContext.Authentication.SignOutAsync("oidc");
+            await HttpContext.SignOutAsync("Cookies");
+            await HttpContext.SignOutAsync("OpenIdConnect");
         }
 
         [Authorize(Roles = "PayingUser")]
@@ -277,8 +276,7 @@ namespace ImageGallery.Client.Controllers
 
             var userInfoClient = new UserInfoClient(metaDataResponse.UserInfoEndpoint);
 
-            var accessToken = await HttpContext.Authentication
-                .GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
+            var accessToken = await HttpContext.GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
 
             var response = await userInfoClient.GetAsync(accessToken);
 
@@ -297,8 +295,7 @@ namespace ImageGallery.Client.Controllers
         public async Task WriteOutIdentityInformation()
         {
             // get the saved identity token
-            var identityToken = await HttpContext.Authentication
-                .GetTokenAsync(OpenIdConnectParameterNames.IdToken);
+            var identityToken = await HttpContext.GetTokenAsync(OpenIdConnectParameterNames.IdToken);
 
             // write it out
             Debug.WriteLine($"Identity token: {identityToken}");

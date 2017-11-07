@@ -25,17 +25,12 @@ namespace ImageGallery.Client
 {
     public class Startup
     {
-        public Startup(IHostingEnvironment env)
+        public Startup(IHostingEnvironment env, IConfiguration configuration)
         {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(env.ContentRootPath)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
-                .AddEnvironmentVariables();
-            Configuration = builder.Build();
+            Configuration = configuration;
         }
 
-        public IConfigurationRoot Configuration { get; }
+        public IConfiguration Configuration { get; }
 
         public void ConfigureServices(IServiceCollection services)
         {
@@ -47,8 +42,6 @@ namespace ImageGallery.Client
             services.Configure<ConfigurationOptions>(Configuration.GetSection("applicationSettings"));
             services.Configure<Dataprotection>(Configuration.GetSection("dataprotection"));
             services.Configure<OpenIdConnectConfiguration>(Configuration.GetSection("openIdConnectConfiguration"));
-
-            services.AddSingleton<IConfiguration>(Configuration);
 
             var config = Configuration.Get<ConfigurationOptions>();
 
@@ -72,22 +65,29 @@ namespace ImageGallery.Client
                 });
             });
 
-            services.AddAuthentication(
-                    o =>
-                    {
-                        o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                        o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                    })
-                .AddCookie("Cookies")
-                .AddOpenIdConnect("oidc", options =>
+            services.AddAuthentication(options =>
                 {
-                    options.Authority = config.OpenIdConnectConfiguration.Authority; 
+                    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+                })
+                .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddOpenIdConnect("OpenIdConnect", options =>
+                {
+                    options.Authority = config.OpenIdConnectConfiguration.Authority;
                     options.RequireHttpsMetadata = true;
                     options.ClientId = config.OpenIdConnectConfiguration.ClientId;
 
                     options.Scope.Clear();
+                    options.Scope.Add("roles");
                     options.Scope.Add("openid");
                     options.Scope.Add("profile");
+                    options.Scope.Add("address");
+                    options.Scope.Add("country");
+                    options.Scope.Add("offline_access");
+                    options.Scope.Add("imagegalleryapi");
+                    options.Scope.Add("subscriptionlevel");
+                    
 
                     options.ResponseType = "code id_token";
                     // CallbackPath = new PathString("...")
@@ -110,18 +110,12 @@ namespace ImageGallery.Client
                     });
             });
 
-            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                .AddCookie();
-
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddScoped<IImageGalleryHttpClient, ImageGalleryHttpClient>();
         }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
-            loggerFactory.AddConsole(Configuration.GetSection("Logging"));
-            loggerFactory.AddDebug();
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -159,6 +153,7 @@ namespace ImageGallery.Client
             var config = Configuration.Get<ConfigurationOptions>();
             Console.WriteLine("Authority" + config.OpenIdConnectConfiguration.Authority);
 
+            #region Moved
             //app.UseOpenIdConnectAuthentication(new OpenIdConnectOptions
             //{
             //    RequireHttpsMetadata = false,
@@ -204,6 +199,9 @@ namespace ImageGallery.Client
             //        }
             //    }
             //});
+            #endregion
+
+            app.UseAuthentication();
 
             app.UseStaticFiles();
 
@@ -220,6 +218,6 @@ namespace ImageGallery.Client
                     name: "default",
                     template: "{controller=Gallery}/{action=Index}/{id?}");
             });
-        }         
+        }
     }
 }
