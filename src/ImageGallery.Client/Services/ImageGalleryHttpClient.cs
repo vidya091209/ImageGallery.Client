@@ -99,7 +99,7 @@ namespace ImageGallery.Client.Services
 
             // create a new token client to get new tokens
             var tokenClient = new TokenClient(metaDataResponse.TokenEndpoint,
-                "imagegalleryclient", "secret");
+                ApplicationSettings.OpenIdConnectConfiguration.ClientId, ApplicationSettings.OpenIdConnectConfiguration.ClientSecret);
 
             // get the saved refresh token
             var currentRefreshToken = await currentContext.Authentication

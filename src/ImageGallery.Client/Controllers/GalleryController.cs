@@ -220,7 +220,9 @@ namespace ImageGallery.Client.Controllers
             Console.WriteLine(metaDataResponse.Error);
 
             // create a TokenRevocationClient
-            var revocationClient = new TokenRevocationClient(metaDataResponse.RevocationEndpoint,"imagegalleryclient","secret");
+            var revocationClient = new TokenRevocationClient(metaDataResponse.RevocationEndpoint, ApplicationSettings.OpenIdConnectConfiguration.ClientId, ApplicationSettings.OpenIdConnectConfiguration.ClientSecret);
+
+           
 
             var x = revocationClient.ClientId;
             var x1 = revocationClient.ClientSecret;

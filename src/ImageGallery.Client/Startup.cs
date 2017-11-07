@@ -47,7 +47,11 @@ namespace ImageGallery.Client
             services.Configure<OpenIdConnectConfiguration>(Configuration.GetSection("openIdConnectConfiguration"));
 
             services.AddSingleton<IConfiguration>(Configuration);
+
             var config = Configuration.Get<ConfigurationOptions>();
+
+            //config.OpenIdConnectConfiguration.ClientId = "";
+
 
             Console.WriteLine($"Dataprotection Enabled: {config.Dataprotection.Enabled}");
             Console.WriteLine($"DataprotectionRedis: {config.Dataprotection.RedisConnection}");
@@ -129,8 +133,7 @@ namespace ImageGallery.Client
 
                 AuthenticationScheme = "oidc",
                 Authority = config.OpenIdConnectConfiguration.Authority, 
-
-                ClientId = "imagegalleryclient",
+                ClientId = config.OpenIdConnectConfiguration.ClientId,
                 Scope = { "openid", "profile", "address", "roles", "imagegalleryapi", "subscriptionlevel", "country", "offline_access" },
                 ResponseType = "code id_token",
                 // CallbackPath = new PathString("...")

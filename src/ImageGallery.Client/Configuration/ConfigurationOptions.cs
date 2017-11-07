@@ -24,10 +24,11 @@
 
     public class OpenIdConnectConfiguration
     {
-        public string Authority { get; set; } //= "https://localhost:44379/";
+        public string Authority { get; set; } 
 
-        public string ClientSecret { get; set; } //= "secret";
+        public string ClientSecret { get; set; }
 
+        public string ClientId { get; set; }
     }
 
 }
