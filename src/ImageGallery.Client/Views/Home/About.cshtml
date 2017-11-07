@@ -4,17 +4,17 @@
 
 <div class="bottomMarginDefault">
     <strong>id_token</strong>
-    <span>@await ViewContext.HttpContext.Authentication.GetTokenAsync("id_token")</span>
+    <span>@await ViewContext.HttpContext.GetTokenAsync("id_token")</span>
 </div>
 
 <div class="bottomMarginDefault">
     <strong>access_token</strong>
-    <span>@await ViewContext.HttpContext.Authentication.GetTokenAsync("access_token")</span>
+    <span>@await ViewContext.HttpContext.GetTokenAsync("access_token")</span>
 </div>
 
 <div class="bottomMarginDefault">
     <strong>refresh_token</strong>
-    <span>@await ViewContext.HttpContext.Authentication.GetTokenAsync("refresh_token")</span>
+    <span>@await ViewContext.HttpContext.GetTokenAsync("refresh_token")</span>
 </div>
 
 
