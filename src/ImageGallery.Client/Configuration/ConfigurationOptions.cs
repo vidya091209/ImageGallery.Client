@@ -5,7 +5,7 @@
         public string ApiUri { get; set; } = "https://localhost:44370/";
 
         public string ImagesUri { get; set; } = "https://localhost:44370/Images/";
-    
+
         public Dataprotection Dataprotection { get; set; }
 
         public OpenIdConnectConfiguration OpenIdConnectConfiguration { get; set; }
@@ -24,11 +24,10 @@
 
     public class OpenIdConnectConfiguration
     {
-        public string Authority { get; set; } 
+        public string Authority { get; set; }
 
         public string ClientSecret { get; set; }
 
         public string ClientId { get; set; }
     }
-
 }
