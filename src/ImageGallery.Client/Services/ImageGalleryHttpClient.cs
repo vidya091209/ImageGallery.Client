@@ -52,13 +52,13 @@ namespace ImageGallery.Client.Services
             string accessToken = string.Empty;
 
             var currentContext = _httpContextAccessor.HttpContext;
-
+          
             //accessToken = await currentContext.Authentication.GetTokenAsync(
             //    OpenIdConnectParameterNames.AccessToken);
 
             // should we renew access & refresh tokens?
             // get expires_at value
-            var expires_at = await currentContext.GetTokenAsync("expires_at");
+            var expires_at = await currentContext.Authentication.GetTokenAsync("expires_at");
 
             // compare - make sure to use the exact date formats for comparison 
             // (UTC, in this case)
@@ -71,7 +71,8 @@ namespace ImageGallery.Client.Services
             else
             {
                 // get access token
-                accessToken = await currentContext.GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
+                accessToken = await currentContext.Authentication
+                    .GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
             }
 
             if (!string.IsNullOrWhiteSpace(accessToken))
@@ -101,7 +102,8 @@ namespace ImageGallery.Client.Services
                 ApplicationSettings.OpenIdConnectConfiguration.ClientId, ApplicationSettings.OpenIdConnectConfiguration.ClientSecret);
 
             // get the saved refresh token
-            var currentRefreshToken = await currentContext.GetTokenAsync(OpenIdConnectParameterNames.RefreshToken);
+            var currentRefreshToken = await currentContext.Authentication
+                .GetTokenAsync(OpenIdConnectParameterNames.RefreshToken);
 
             // refresh the tokens
             var tokenResult = await tokenClient.RequestRefreshTokenAsync(currentRefreshToken);
@@ -111,7 +113,8 @@ namespace ImageGallery.Client.Services
                 // Save the tokens. 
 
                 // get auth info
-                var authenticateInfo = await currentContext.AuthenticateAsync();
+                var authenticateInfo = await currentContext.Authentication
+                    .GetAuthenticateInfoAsync("Cookies");
 
                 // create a new value for expires_at, and save it
                 var expiresAt = DateTime.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
@@ -126,7 +129,7 @@ namespace ImageGallery.Client.Services
                     tokenResult.RefreshToken);
 
                 // we're signing in again with the new values.  
-                await currentContext.SignInAsync("Cookies",
+                await currentContext.Authentication.SignInAsync("Cookies",
                     authenticateInfo.Principal, authenticateInfo.Properties);
 
                 // return the new access token 

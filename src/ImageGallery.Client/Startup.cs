@@ -1,41 +1,28 @@
-using System;
-using System.Collections.Generic;
+﻿using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using ImageGallery.Client.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.SpaServices.Webpack;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using ImageGallery.Client.Configuration;
-using StackExchange.Redis;
-
-using ConfigurationOptions = ImageGallery.Client.Configuration.ConfigurationOptions;
-
-
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using ImageGallery.Client.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
 using Swashbuckle.AspNetCore.Swagger;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Rewrite;
+using StackExchange.Redis;
+using ConfigurationOptions = ImageGallery.Client.Configuration.ConfigurationOptions;
 
-namespace ImageGallery.Client2
+namespace ImageGallery.Client
 {
     public class Startup
     {
-        /*
-        public Startup(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
-        */
         public Startup(IHostingEnvironment env)
         {
             var builder = new ConfigurationBuilder()
@@ -47,9 +34,7 @@ namespace ImageGallery.Client2
         }
 
         public IConfigurationRoot Configuration { get; }
-        //public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
@@ -101,73 +86,19 @@ namespace ImageGallery.Client2
                     });
             });
 
-            services.AddAuthentication(options =>
-            {
-                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
-            })
-            .AddCookie()
-            .AddOpenIdConnect(options =>
-            {
-                options.Authority = config.OpenIdConnectConfiguration.Authority;
-                options.ClientId = config.OpenIdConnectConfiguration.ClientId;
-                
-                var arr = new String[]{ "openid", "profile", "address", "roles", "imagegalleryapi", "subscriptionlevel", "country", "offline_access"};
-                foreach (var scope in arr) {
-                    options.Scope.Add(scope);
-                }
-
-                options.ResponseType = "code id_token";
-                options.SaveTokens = true;
-                options.ClientSecret = config.OpenIdConnectConfiguration.ClientSecret;
-                options.GetClaimsFromUserInfoEndpoint = true;
-                options.Events = new OpenIdConnectEvents()
-                {
-                    OnTokenValidated = tokenValidatedContext =>
-                    {
-                        var identity = tokenValidatedContext.Principal.Identity
-                            as ClaimsIdentity;
-
-                        var subjectClaim = identity.Claims.FirstOrDefault(z => z.Type == "sub");
-                                                
-                        var newClaimsIdentity = new ClaimsIdentity(
-                            "oidc",
-                            "given_name",
-                            "role");
-
-                        newClaimsIdentity.AddClaim(subjectClaim);
-
-                        tokenValidatedContext.Principal = new ClaimsPrincipal(newClaimsIdentity);
-
-                        return Task.FromResult(0);
-                    },
-                    OnUserInformationReceived = userInformationReceivedContext =>
-                    {
-                        userInformationReceivedContext.User.Remove("address");
-                        return Task.FromResult(0);
-                    }
-                };
-            });
-
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddScoped<IImageGalleryHttpClient, ImageGalleryHttpClient>();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
-            //var options2 = new RewriteOptions().AddRedirectToHttps();
-
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
 
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseWebpackDevMiddleware(new WebpackDevMiddlewareOptions
-                {
-                    HotModuleReplacement = true
-                });
+                app.UseBrowserLink();
             }
             else
             {
@@ -185,8 +116,62 @@ namespace ImageGallery.Client2
 
             app.UseForwardedHeaders(forwardOptions);
 
+            app.UseCookieAuthentication(new CookieAuthenticationOptions
+            {
+                AuthenticationScheme = "Cookies",
+                AccessDeniedPath = "/Authorization/AccessDenied"
+            });
+
             JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
-            app.UseAuthentication();
+
+            var config = Configuration.Get<ConfigurationOptions>();
+            Console.WriteLine("Authority" + config.OpenIdConnectConfiguration.Authority);
+
+            app.UseOpenIdConnectAuthentication(new OpenIdConnectOptions
+            {
+                RequireHttpsMetadata = false,
+
+                AuthenticationScheme = "oidc",
+                Authority = config.OpenIdConnectConfiguration.Authority, 
+                ClientId = config.OpenIdConnectConfiguration.ClientId,
+                Scope = { "openid", "profile", "address", "roles", "imagegalleryapi", "subscriptionlevel", "country", "offline_access" },
+                ResponseType = "code id_token",
+                // CallbackPath = new PathString("...")
+                //SignedOutCallbackPath = new PathString("")
+                SignInScheme = "Cookies",
+                SaveTokens = true,
+                ClientSecret = config.OpenIdConnectConfiguration.ClientSecret,
+                GetClaimsFromUserInfoEndpoint = true,
+                Events = new OpenIdConnectEvents()
+                {
+                    OnTokenValidated = tokenValidatedContext =>
+                    {
+                        var identity = tokenValidatedContext.Ticket.Principal.Identity
+                            as ClaimsIdentity;
+
+                        var subjectClaim = identity.Claims.FirstOrDefault(z => z.Type == "sub");
+
+                        var newClaimsIdentity = new ClaimsIdentity(
+                            tokenValidatedContext.Ticket.AuthenticationScheme,
+                            "given_name",
+                            "role");
+
+                        newClaimsIdentity.AddClaim(subjectClaim);
+
+                        tokenValidatedContext.Ticket = new AuthenticationTicket(
+                            new ClaimsPrincipal(newClaimsIdentity),
+                            tokenValidatedContext.Ticket.Properties,
+                            tokenValidatedContext.Ticket.AuthenticationScheme);
+
+                        return Task.FromResult(0);
+                    },
+                    OnUserInformationReceived = userInformationReceivedContext =>
+                    {
+                        userInformationReceivedContext.User.Remove("address");
+                        return Task.FromResult(0);
+                    }
+                }
+            });
 
             app.UseStaticFiles();
 
@@ -202,11 +187,7 @@ namespace ImageGallery.Client2
                 routes.MapRoute(
                     name: "default",
                     template: "{controller=Gallery}/{action=Index}/{id?}");
-
-                routes.MapSpaFallbackRoute(
-                    name: "spa-fallback",
-                    defaults: new { controller = "Home", action = "Index" });
             });
-        }
+        }         
     }
 }
