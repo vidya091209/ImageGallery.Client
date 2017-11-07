@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 
-namespace ImageGallery.Client2.Controllers
+namespace ImageGallery.Client.Controllers
 {
     [Route("api/[controller]")]
     public class DiagnosticsController : Controller
