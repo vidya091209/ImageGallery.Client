@@ -173,6 +173,7 @@ ClientBin/
 *.publishsettings
 node_modules/
 bower_components/
+dist/
 
 orleans.codegen.cs
 
